@@ -1,0 +1,95 @@
+import pandas as pd
+
+def get_branch_data():
+    """
+    Collect branch data interactively from the user.
+    Returns a list of dictionaries with branch details.
+    """
+    data = []
+    print("Enter branch data. Type 'done' when finished.")
+    while True:
+        branch = input("Branch Name (or 'done' to finish): ").strip()
+        if branch.lower() == 'done':
+            break
+        try:
+            sales = float(input(f"  Sales Revenue for {branch} (in dollars): ").strip())
+            employees = int(input(f"  Number of Employees for {branch}: ").strip())
+            costs = float(input(f"  Costs for {branch} (in dollars): ").strip())
+            data.append({"Branch": branch, "Sales Revenue": sales, "Employees": employees, "Costs": costs})
+        except ValueError:
+            print("  Invalid input. Please enter numeric values for Sales Revenue, Employees, and Costs.")
+    return data
+
+def calculate_branch_scores(data, alpha=0.7, beta=0.3):
+    """
+    Calculate branch scores based on sales, employees, and costs.
+
+    Parameters:
+    - data (list of dict): Each dict contains branch data with keys 'Branch', 'Sales Revenue', 'Employees', 'Costs'.
+    - alpha (float): Weight for sales revenue in the weighting factor (default: 0.7).
+    - beta (float): Weight for number of employees in the weighting factor (default: 0.3).
+
+    Returns:
+    - DataFrame with calculated columns for Net Income, Weighting Factor, Raw Score, Adjusted Score, and Category.
+    """
+    # Create a DataFrame from input data
+    df = pd.DataFrame(data)
+
+    # Total values for business-wide metrics
+    total_sales = df["Sales Revenue"].sum()
+    total_employees = df["Employees"].sum()
+
+    # Calculate Net Income
+    df["Net Income"] = df["Sales Revenue"] - df["Costs"]
+
+    # Calculate Weighting Factor
+    df["Weighting Factor"] = (
+        alpha * (df["Sales Revenue"] / total_sales) +
+        beta * (df["Employees"] / total_employees)
+    )
+
+    # Calculate Raw Score (Net Income / Total Business Sales)
+    df["Raw Score"] = df["Net Income"] / total_sales * 10
+
+    # Calculate Adjusted Score (Raw Score * Weighting Factor)
+    df["Adjusted Score"] = df["Raw Score"] * df["Weighting Factor"]
+
+    # Define category placement thresholds
+    def categorize(score):
+        if score < 2:
+            return "Critical"
+        elif score < 4:
+            return "Poor"
+        elif score < 6:
+            return "Average"
+        elif score < 8:
+            return "Good"
+        else:
+            return "Excellent"
+
+    # Apply category placement
+    df["Category"] = df["Adjusted Score"].apply(categorize)
+
+    return df
+
+def main():
+    print("Welcome to the Branch Scoring Tool!")
+    branch_data = get_branch_data()
+    if not branch_data:
+        print("No data entered. Exiting.")
+        return
+
+    results = calculate_branch_scores(branch_data)
+    print("\nBranch Scoring Results:")
+    print(results)
+
+    save_to_excel = input("\nWould you like to save the results to an Excel file? (yes/no): ").strip().lower()
+    if save_to_excel == 'yes':
+        file_name = input("Enter the file name (default: Branch_Scoring_Results.xlsx): ").strip()
+        if not file_name:
+            file_name = "Branch_Scoring_Results.xlsx"
+        results.to_excel(file_name, index=False)
+        print(f"Results saved to {file_name}.")
+
+if __name__ == "__main__":
+    main()
